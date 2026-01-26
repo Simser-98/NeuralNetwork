@@ -37,24 +37,43 @@ for i in range(len(n)-1):
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
+def sigmoid_derivative(a):
+    return a * (1 - a)
+
+
 
 
 def forward(inputs):
+    activations = [inputs]   # A0 = inputs
+    zs = []
 
-    outputs = weights[0] @ inputs + biases[0]
+    for i in range(len(weights)):
+        z = weights[i] @ activations[-1] + biases[i]
+        zs.append(z)
+        a = sigmoid(z)
+        activations.append(a)
 
-    for i in range(len(n) - 2):
-        '''print("W: ", weights[i + 1].shape)
-        print("B: ", biases[i + 1].shape)
-        print("Z: ", outputs.shape)'''
+    return activations, zs
 
-        Activated_outputs = sigmoid(outputs)
-        outputs = weights[i + 1] @ Activated_outputs + biases[i + 1]
+def backward(activations, zs, y):
+    m = y.shape[1]
 
-    return sigmoid(outputs)
+    dW = [None] * len(weights)
+    dB = [None] * len(biases)
 
-neural_nets_output = forward(Inputs) # neural nets prediction/ y_hat
-print("neural net's pass output: ", neural_nets_output)
+    # Output layer error
+    delta = activations[-1] - y   # (A_L - Y)
+
+    for l in reversed(range(len(weights))):
+        dW[l] = (1 / m) * delta @ activations[l].T
+        dB[l] = (1 / m) * np.sum(delta, axis=1, keepdims=True)
+
+        if l != 0:
+            delta = (weights[l].T @ delta) * sigmoid_derivative(activations[l])
+
+    return dW, dB
+
+
 
 def cost(y_hat, y):
 
@@ -63,6 +82,32 @@ def cost(y_hat, y):
     summed_losses = (1 / m) * np.sum(losses, axis=1)
 
     return np.sum(summed_losses)
+
+def update_params(dW, dB, lr=0.1):
+    for i in range(len(weights)):
+        weights[i] -= lr * dW[i]
+        biases[i] -= lr * dB[i]
+
+
+epochs = 1000
+learning_rate = 0.1
+
+for epoch in range(epochs):
+    activations, zs = forward(Inputs)
+    y_hat = activations[-1]
+
+    loss = cost(y_hat, Y)
+    dW, dB = backward(activations, zs, Y)
+    update_params(dW, dB, learning_rate)
+
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+
+
+predictions = (y_hat > 0.5).astype(int)
+print("Predictions:", predictions)
+print("True labels:", Y)
+
 
 
 
